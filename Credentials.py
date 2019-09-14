@@ -1,3 +1,3 @@
-client_secret = "2LV0RUIaVxrjw9YTfDbTRS6cGFQS5qMRCcuitCKeDUcoUqHUpYEtaHocNdRjMe0ZbrJfliAXgDSCOAWY2W0Xjsrq3YAMRHBaDROkdSb8PikI6d0rzji62N80It24Zvu8"
-client_id = "VZV63cRM7VJuwfIABvgkVG9X717j7T2IOkuuH06d"
+client_secret = "oTZc6Hi1iuorn0Yuml7aEOMMtwUGJfxYZ2TLazeSnakRvUcgjmJFU9gXuvTR2CzVlNr13mcPCWs5GWgem6WpgW10qdGFCnengOaqNNsDPNnb2HnkpC45QSabHXUGdgw0"
+client_id = "OJJe8jji6hPPI9DhjSk2gAw96Wv8KChcFJGrHI1L"
 ProfileName = "Huy4"

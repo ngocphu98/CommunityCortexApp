@@ -11,29 +11,42 @@ import requests
 ws = create_connection("wss://localhost:6868", sslopt={"cert_reqs": ssl.CERT_NONE})
 #------------------------------------------------------------
 #Get cortex info
-# ws.send(json.dumps({
-#     "id": 1,
-#     "jsonrpc": "2.0",
-#     "method": "getCortexInfo"
-# }))
-# print(ws.recv())
+ws.send(json.dumps({
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "getCortexInfo"
+}))
+result = json.loads(ws.recv())
+print("BuildDate: ",result["result"]["buildDate"])
+print("BuildNumber: ",result["result"]["buildNumber"])
+print("Version: ",result["result"]["version"])
 #------------------------------------------------------------
 #get User login
-# ws.send(json.dumps({
-#     "id": 1,
-#     "jsonrpc": "2.0",
-#     "method": "getUserLogin"
-# }))
-# print(ws.recv())
+ws.send(json.dumps({
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "getUserLogin"
+}))
+result = json.loads(ws.recv())
+print("CurrentOSUId: ",result["result"][0]["currentOSUId"])
+print("CurrentOSUsername: ",result["result"][0]["currentOSUsername"])
+print("LoggedInOSUId: ",result["result"][0]["loggedInOSUId"])
+print("LoggedInOSUsername: ",result["result"][0]["loggedInOSUsername"])
 #------------------------------------------------------------
+#Query Headsets ID
 ws.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "queryHeadsets"
 }))
 result = json.loads(ws.recv())
-IdHeadset = result.get("result")[0].get("id")    
-print("Conected to Headset ID: %s" %(IdHeadset))
+if (len(result["result"]) > 0 ):
+    IdHeadset = result.get("result")[0].get("id")    
+    print("Conected to Headset ID: %s" %(IdHeadset))
+else:
+    print("No headset conected.\nPlease conect the headset!")
+    exit()
+
 #------------------------------------------------------------
 # #Get request access
 ws.send(json.dumps({
@@ -59,8 +72,7 @@ ws.send(json.dumps({
 }))
 result = json.loads(ws.recv())
 CortexToken = result.get("result").get("cortexToken")
-print ("Token: ")
-print(CortexToken)     
+print(result)   
 #------------------------------------------------------------
 #Creat new session
 ws.send(json.dumps({
