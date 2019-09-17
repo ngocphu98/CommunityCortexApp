@@ -8,48 +8,56 @@ from websocket  import create_connection
 import ssl
 import time
 import requests
-ws = create_connection("wss://localhost:6868", sslopt={"cert_reqs": ssl.CERT_NONE})
+from termcolor import colored
+EmotivWebsocketUrl = "wss://localhost:6868"
+try:
+    EmotivWs = create_connection(EmotivWebsocketUrl, sslopt = {"cert_reqs": ssl.CERT_NONE})
+except ConnectionRefusedError:
+    print("Cannot connect to EmotivWebsocket.")
+    print("Invalid URL. Please check the url!")
+    exit(0)
+
 #------------------------------------------------------------
 #Get cortex info
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "getCortexInfo"
 }))
-result = json.loads(ws.recv())
+result = json.loads(EmotivWs.recv())
 print("BuildDate: ",result["result"]["buildDate"])
 print("BuildNumber: ",result["result"]["buildNumber"])
 print("Version: ",result["result"]["version"])
 #------------------------------------------------------------
-#get User login
-ws.send(json.dumps({
+#Get User login
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "getUserLogin"
 }))
-result = json.loads(ws.recv())
+result = json.loads(EmotivWs.recv())
 print("CurrentOSUId: ",result["result"][0]["currentOSUId"])
 print("CurrentOSUsername: ",result["result"][0]["currentOSUsername"])
 print("LoggedInOSUId: ",result["result"][0]["loggedInOSUId"])
 print("LoggedInOSUsername: ",result["result"][0]["loggedInOSUsername"])
 #------------------------------------------------------------
 #Query Headsets ID
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "queryHeadsets"
 }))
-result = json.loads(ws.recv())
+result = json.loads(EmotivWs.recv())
 if (len(result["result"]) > 0 ):
     IdHeadset = result.get("result")[0].get("id")    
-    print("Conected to Headset ID: %s" %(IdHeadset))
+    print(colored("Conected to Headset ID: %s" %(IdHeadset),"green"))
 else:
-    print("No headset conected.\nPlease conect the headset!")
-    exit()
+    print(colored("No headset conected.\nPlease conect the headset!", "red"))
+    exit(0)
 
 #------------------------------------------------------------
-# #Get request access
-ws.send(json.dumps({
+#Get request access
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "requestAccess",
@@ -58,10 +66,21 @@ ws.send(json.dumps({
         "clientSecret": client_secret
     }
 }))
-print(ws.recv())
+result = json.loads(EmotivWs.recv())
+AccessGranted = result.get("result").get("accessGranted")
+if(AccessGranted == False):
+    print(colored("AccesGranted: %s "%str(AccessGranted),"red"))
+    print(colored("Message: %s" %(result["result"]["message"]),"red"))
+    print("Please approve request through EMOTIV App!")
+    exit(0)
+else:
+    print(colored("AccesGranted: %s "%str(AccessGranted),"green"))
+    print(colored("Message: %s" %(result["result"]["message"]),"green"))
+
+    
 #------------------------------------------------------------
 #Authorize
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "authorize",
@@ -70,12 +89,13 @@ ws.send(json.dumps({
         "clientSecret": client_secret
     }
 }))
-result = json.loads(ws.recv())
+print("Waiting cortext Token...")   
+result = json.loads(EmotivWs.recv())
 CortexToken = result.get("result").get("cortexToken")
-print(result)   
+print(colored("successfuly","green"))   
 #------------------------------------------------------------
 #Creat new session
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "createSession",
@@ -85,11 +105,11 @@ ws.send(json.dumps({
         "status": "open"
     }
 }))
-result = json.loads(ws.recv())
+result = json.loads(EmotivWs.recv())
 IdSession = result.get("result").get("id")
 #------------------------------------------------------------
 #Load profile
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "setupProfile",
@@ -102,7 +122,7 @@ ws.send(json.dumps({
 }))
 #------------------------------------------------------------
 #Stream data
-ws.send(json.dumps({
+EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
     "method": "subscribe",
@@ -112,24 +132,43 @@ ws.send(json.dumps({
         "streams": ["com"]
     }
 }))
+#------------------------------------------------------------
+print("1. Running program without BLE")
+print("2. Runing initialize BLE and send data stream to Arduino")
+print ("Select by entering coresponding number...")
+SelectionRun = int(input(">"))
+if (SelectionRun == 1):
+    while True:
+        result = json.loads(EmotivWs.recv())
+        ReturnData = result.get("com")
+        if(ReturnData != None):
+            MentalCommand = ReturnData[0]
+            ActionPower = ReturnData[1]
+            Time = result["time"]
+            print(MentalCommand,ActionPower,Time)
+            
 
-List = SearchNearBy()
-num = 0
-NameBle = []
-#print nearby bluetool device
-for k, v in List.items():
-    NameBle += [k]
-    num += 1
-    print ("{}:".format(num)," \t:\t ".join((k,v)))
-print ("Select your device by entering its coresponding number...")
-selection = int(input("> "))-1
-print ("You have selected", NameBle[selection])
-CreatConection(List[NameBle[selection]])
-print("Conected.")
-while True:
-    result = json.loads(ws.recv())
-    MentalCommand = result.get("com")
-    if(MentalCommand != None):
-        print(MentalCommand[0],MentalCommand[1])
-        SendToBluetooth(MentalCommand[0])
-        SendToBluetooth(str(MentalCommand[1]))
+else:
+    #BLE initialize
+    List = SearchNearBy()
+    num = 0
+    NameBle = []
+    #print nearby bluetooth device
+    for k, v in List.items():
+        NameBle += [k]
+        num += 1
+        print ("{}:".format(num)," \t:\t ".join((k,v)))
+    print ("Select your device by entering its coresponding number...")
+    SelectionDevice = int(input("> ")) - 1
+    print ("You have selected", NameBle[SelectionDevice])
+    CreatConection(List[NameBle[SelectionDevice]])
+    print("Conected to ",NameBle[SelectionDevice])
+    while True:
+        result = json.loads(EmotivWs.recv())
+        ReturnData = result.get("com")
+        if(ReturnData != None):
+            print(MentalCommand,ActionPower)
+            SendToBluetooth(MentalCommand)
+            SendToBluetooth(str(ActionPower))
+            MentalCommand = ReturnData[0]
+            ActionPower = ReturnData[1]
