@@ -102,26 +102,29 @@ EmotivWs.send(json.dumps({
     "params": {
         "cortexToken": CortexToken,
         "headset": IdHeadset,
-        "status": "open"
+        "status": "active"
     }
 }))
 result = json.loads(EmotivWs.recv())
+print(result)
 IdSession = result.get("result").get("id")
 #------------------------------------------------------------
 #Load profile
-EmotivWs.send(json.dumps({
-    "id": 1,
-    "jsonrpc": "2.0",
-    "method": "setupProfile",
-    "params": {
-        "cortexToken": CortexToken,
-        "headset": IdHeadset,
-        "profile": ProfileName,
-        "status": "load"
-    }
-}))
+# EmotivWs.send(json.dumps({
+#     "id": 1,
+#     "jsonrpc": "2.0",
+#     "method": "setupProfile",
+#     "params": {
+#         "cortexToken": CortexToken,
+#         "headset": IdHeadset,
+#         "profile": ProfileName,
+#         "status": "load"
+#     }
+# }))
 #------------------------------------------------------------
-#Stream data
+#Stream data 
+#The parameter streams must contain one or more values, chosen from this list: 
+# "eeg", "mot", "dev", "pow", "met", "com",  "fac", "sys". 
 EmotivWs.send(json.dumps({
     "id": 1,
     "jsonrpc": "2.0",
@@ -129,7 +132,7 @@ EmotivWs.send(json.dumps({
     "params": {
         "cortexToken": CortexToken,
         "session": IdSession,
-        "streams": ["com"]
+        "streams": ["eeg"]
     }
 }))
 #------------------------------------------------------------
@@ -140,12 +143,13 @@ SelectionRun = int(input(">"))
 if (SelectionRun == 1):
     while True:
         result = json.loads(EmotivWs.recv())
-        ReturnData = result.get("com")
-        if(ReturnData != None):
-            MentalCommand = ReturnData[0]
-            ActionPower = ReturnData[1]
-            Time = result["time"]
-            print(MentalCommand,ActionPower,Time)
+        print(result)
+        # ReturnData = result.get("com")
+        # if(ReturnData != None):
+        #     MentalCommand = ReturnData[0]
+        #     ActionPower = ReturnData[1]
+        #     Time = result["time"]
+        #     print(MentalCommand,ActionPower,Time)
             
 
 else:
@@ -165,10 +169,11 @@ else:
     print("Conected to ",NameBle[SelectionDevice])
     while True:
         result = json.loads(EmotivWs.recv())
-        ReturnData = result.get("com")
-        if(ReturnData != None):
-            print(MentalCommand,ActionPower)
-            SendToBluetooth(MentalCommand)
-            SendToBluetooth(str(ActionPower))
-            MentalCommand = ReturnData[0]
-            ActionPower = ReturnData[1]
+        # ReturnData = result.get("com")
+        # if(ReturnData != None):
+        #     print(MentalCommand,ActionPower)
+        #     SendToBluetooth(MentalCommand)
+        #     SendToBluetooth(str(ActionPower))
+        #     MentalCommand = ReturnData[0]
+        #     ActionPower = ReturnData[1]
+            

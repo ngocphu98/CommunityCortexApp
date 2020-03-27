@@ -1,3 +1,4 @@
-client_secret = "oTZc6Hi1iuorn0Yuml7aEOMMtwUGJfxYZ2TLazeSnakRvUcgjmJFU9gXuvTR2CzVlNr13mcPCWs5GWgem6WpgW10qdGFCnengOaqNNsDPNnb2HnkpC45QSabHXUGdgw0"
-client_id = "OJJe8jji6hPPI9DhjSk2gAw96Wv8KChcFJGrHI1L"
+#Cortex App: ExokeletonControl 
+client_secret = "4D5wasNAcye8VR2PHCpn18pOWNOe1tPXjNZiTnnTvksTLjZ4TUQb2fL2evcPk1tPRrwjgm8ruKLYUm0w5YBEzjzHLoqlkgz2TkRDlpfyRdsH6vSveUk45B3yPITs8l1N"
+client_id = "hu5qvsQpgAAI7wj4mjq9EwjkycBL5BzuHtS43p78"
 ProfileName = "ngocphu"
