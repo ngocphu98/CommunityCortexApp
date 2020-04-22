@@ -12,47 +12,35 @@ import gevent
 import csv
 
 
-list_channels=["EEG.AF3", "EEG.F7", "EEG.F3", "EEG.FC5", "EEG.T7", "EEG.P7", "EEG.O1", 
-                "EEG.O2", "EEG.P8", "EEG.T8", "EEG.FC6", "EEG.F4", "EEG.F8", "EEG.AF4"]
+list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
-    count = 0
-    threshold = 100
-    len_sig =0 
-    eeg_data = []
-    #Sample frequency
-    Fs = 0
-    #Sample time
-    Ts = 0
-    timeout = 0
-    # Unit second
-    session_time = 0
-    num_of_sample_session = 0
-    # Create a Higpass filter
-    # Sampling frequency: Fs = 128
-    # Cut off frequency:  Fc = 0.5
-    # Filter oder: 1
-    #eeg_fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=4, constrained_layout=True)
-    hp_filter =0
-
-    def __init__(self, path = "J:\\Backup Hdd 12 mar 2020\\test eeg python\\eeg_data\\Data_eeg.csv"):
+    
+    def __init__(self, path = "D:\\NghienCuuKhoaHoc2019\\Programming\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"):
         data_file_eeg = pd.read_csv(path)
         self.eeg_data = data_file_eeg[list_channels]
         self.len_sig = self.eeg_data.shape[0]
+        #padsize for padding signal 
+        self.pad_size = 8
         #Sample frequency
         self.Fs = 128
         #Sample time
         self.Ts = 1/self.Fs
+        #time out for collecting data unit (s)
         self.timeout = 30
-        self.session_time = 1
+        # session (s) length of signal to process
+        self.session_time = 0.25
         self.num_of_sample_session = int(self.session_time * self.Fs)
+        #Threshold for peak dectect
+        self.threshold = 230
+        # counter service for get data from file eeg data
+        self.count = 0
         # Create a Higpass filter
         # Sampling frequency: Fs = 128
         # Cut off frequency:  Fc = 0.5
         # Filter oder: 1
-        self.hp_filter = signal.butter(1, 0.5, 'hp', fs=128, output='sos')
-        #Style for plot eeg graph
-        #plt.style.use('seabom')
+        self.hp_filter = signal.butter(1, 0.5, 'hp', fs=self.Fs, output='sos')
+        #header for file filted_eeg.csv'
         self.results_header = []
         for channel in list_channels:
             self.results_header.append('peak_' + channel)
@@ -60,7 +48,8 @@ class RealTimeBlinkEeg(object):
         eeg_raw_header = list_channels.copy()
         eeg_raw_header.insert(0,"Index") 
         eeg_filted_header = self.results_header.copy()
-        eeg_filted_header.insert(0,"Index")       
+        eeg_filted_header.insert(0,"Index")   
+        # Write header for file    
         with open('filted_eeg.csv', 'w') as csv_file:
             csv_writer = csv.DictWriter(csv_file, fieldnames=eeg_filted_header)
             csv_writer.writeheader()        
@@ -78,19 +67,26 @@ class RealTimeBlinkEeg(object):
         Eeg_Hp_Filtered = signal.sosfilt(self.hp_filter, eeg_data)
         # median filter
         # Filter oder: 7
-        Eeg_Filtered = medfilt(Eeg_Hp_Filtered,7)
+        Eeg_Filtered = medfilt(Eeg_Hp_Filtered,13)
         return Eeg_Filtered
 
     def peaks_detect(self, channels, threshold):
         peaks, _ = find_peaks(channels, height=threshold)
         return peaks
 
-    def determine_blink_type(self, frame_eeg_filted, peaks_in_frame_eeg):
-
-        pass
+    def classify_blink(self, eeg_data):
+        if len(eeg_data[eeg_data['peak_EEG.AF3'] == 1]) >0 and len(eeg_data[eeg_data['peak_EEG.AF4'] == 1]) ==0:
+            print("blink left eye")
+        elif len(eeg_data[eeg_data['peak_EEG.AF3'] == 1]) ==0 and len(eeg_data[eeg_data['peak_EEG.AF4'] == 1]) >0:
+            print("blink right eye")
+        elif len(eeg_data[eeg_data['peak_EEG.AF3'] == 1]) >0 and len(eeg_data[eeg_data['peak_EEG.AF4'] == 1]) >0:
+            print("blink 2 eye")
+        print("----------------------------")
+        
 
     def write_csv(self, frame_eeg, path):
-        frame_eeg.to_csv(path,mode='a',header = False)
+    #append mode in writing to excel file
+        frame_eeg.to_csv(path, mode='a', header = False)
 
     def collect_data(self):
         counter = 0
@@ -127,54 +123,52 @@ class RealTimeBlinkEeg(object):
                 peak[result[1]] = 1
                 results_df[self.results_header[i+1]] = result[0]
                 results_df[self.results_header[i]] = peak
-                i += 2 
-            #print(results_df.shape)          
-            self.write_csv(results_df.drop(results_df.index[0:512]),'filted_eeg.csv')
-        # for i in list_channels:
-        #     frame_eeg_filted = self.filt_data(frame_eeg[i].values)
-        #     peaks_in_frame_eeg = self.peaks_detect(frame_eeg_filted, self.threshold)     
-        #     self.determine_blink_type(frame_eeg_filted, peaks_in_frame_eeg)
-            
+                i += 2   
+            results_df =  results_df.drop(results_df.index[0:self.pad_size*self.num_of_sample_session])
+            #print(results_df.shape)   
+            self.classify_blink(results_df)
+            self.write_csv(results_df, 'filted_eeg.csv')
+
         end = time.time()
         runtime = end - start
         print("Process data runtime:", runtime)
 
+    def init_pad(self,pad_size):
+        frame_eeg = self.collect_data()        
+        for _ in range(pad_size):
+            frame_eeg = frame_eeg.append(self.collect_data(), ignore_index = True)
+        return frame_eeg  
+
     def main_process(self):
         threads = []
         print("start program")
-        init = True
-        init_time = 0
-        frame_eeg = self.collect_data()
+        frame_eeg = self.init_pad(self.pad_size)
         try:
             while True:
                 start = time.time()
-                if init == True:
-                    frame_eeg = frame_eeg.append(self.collect_data(), ignore_index = True)
-                    init_time +=1
-                    if init_time == 4:
-                        init = False
-                else:
-                    frame_eeg = frame_eeg.drop(frame_eeg.index[0:128])
-                    print("frame eeg shape after drop:{}".format(frame_eeg.shape))
-                    single_frame = self.collect_data()
-                    print("single frame shape:{}".format(single_frame.shape))
-                    frame_eeg = frame_eeg.append(single_frame, ignore_index = True)
-                    print("frame eeg shape:{}".format(frame_eeg.shape))
-                    time_step1 = time.time()
+                frame_eeg = frame_eeg.drop(frame_eeg.index[0:self.num_of_sample_session])
+                #print("frame eeg shape after drop:{}".format(frame_eeg.shape))
+                single_frame = self.collect_data()
+                #print("single frame shape:{}".format(single_frame.shape))
+                frame_eeg = frame_eeg.append(single_frame, ignore_index = True)
+                #print("frame eeg shape:{}".format(frame_eeg.shape))
+                time_step1 = time.time()
 
-                    write_csv_thread = threading.Thread(target=real_time_eeg.write_csv, args=(single_frame,'eeg_raw.csv'))
-                    threads.append(write_csv_thread)
-                    write_csv_thread.start()
+                write_csv_thread = threading.Thread(target=real_time_eeg.write_csv, args=(single_frame,'eeg_raw.csv'))
+                threads.append(write_csv_thread)
+                write_csv_thread.start()
 
-                    process_thread = threading.Thread(target=real_time_eeg.process_data, args=(frame_eeg,))
-                    threads.append(process_thread)
-                    process_thread.start()
+                process_thread = threading.Thread(target=real_time_eeg.process_data, args=(frame_eeg,))
+                threads.append(process_thread)
+                process_thread.start()
 
-                    time.sleep(0.5)
-                    end = time.time()
-                    time_run = end - start
-                    print("Time run Collect data:",time_step1-start)
-                    print("Main process runtime:",time_run)
+                #time.sleep(0.1)
+                end = time.time()
+                time_run = end - start
+
+                print("Time run Collect data:",time_step1-start)
+                print("Main process runtime:",time_run)
+
         except KeyboardInterrupt:
             print("Keyboard interrupt exiting program ...")
         finally:
