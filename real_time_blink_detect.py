@@ -10,9 +10,10 @@ import threading
 import concurrent.futures
 import gevent
 import csv
+from queue import Queue
+from EmotivControl import Emotiv_API
 
-
-list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
+list_channels=["EEG.F7", "EEG.F8"]
 
 class RealTimeBlinkEeg(object):
     
@@ -31,15 +32,19 @@ class RealTimeBlinkEeg(object):
         # session (s) length of signal to process
         self.session_time = 0.25
         self.num_of_sample_session = int(self.session_time * self.Fs)
-        #Threshold for peak dectect
+        #Threshold for peak detect
         self.threshold = 230
         # counter service for get data from file eeg data
         self.count = 0
-        # Create a Higpass filter
+        # Create a Highpass filter
         # Sampling frequency: Fs = 128
         # Cut off frequency:  Fc = 0.5
         # Filter oder: 1
         self.hp_filter = signal.butter(1, 0.5, 'hp', fs=self.Fs, output='sos')
+        self.window_size = 128
+        self.EEG_F7 = Queue(window_size)
+        self.EEG_F8 = Queue(window_size)
+
         #header for file filted_eeg.csv'
         self.results_header = []
         for channel in list_channels:
@@ -47,11 +52,12 @@ class RealTimeBlinkEeg(object):
             self.results_header.append(channel)
         eeg_raw_header = list_channels.copy()
         eeg_raw_header.insert(0,"Index") 
-        eeg_filted_header = self.results_header.copy()
-        eeg_filted_header.insert(0,"Index")   
+        eeg_filtered_header = self.results_header.copy()
+        eeg_filtered_header.insert(0,"Index")   
+
         # Write header for file    
         with open('filted_eeg.csv', 'w') as csv_file:
-            csv_writer = csv.DictWriter(csv_file, fieldnames=eeg_filted_header)
+            csv_writer = csv.DictWriter(csv_file, fieldnames=eeg_filtered_header)
             csv_writer.writeheader()        
         with open('eeg_raw.csv', 'w') as csv_file:
             csv_writer = csv.DictWriter(csv_file, fieldnames=eeg_raw_header)
@@ -61,9 +67,9 @@ class RealTimeBlinkEeg(object):
     def get_single_data(self):
         single_data = self.eeg_data.loc[self.count, list_channels]
         self.count += 1
-        return single_data
+        return single_data['EEG.F7'], single_data['EEG.F8']
 
-    def filt_data(self,eeg_data):
+    def filter_data(self,eeg_data):
         Eeg_Hp_Filtered = signal.sosfilt(self.hp_filter, eeg_data)
         # median filter
         # Filter oder: 7
@@ -105,9 +111,9 @@ class RealTimeBlinkEeg(object):
         return session_data
 
     def preprocess_signal(self, frame_eeg):
-        frame_eeg_filted = self.filt_data(frame_eeg)
-        peaks_in_frame_eeg = self.peaks_detect(frame_eeg_filted, self.threshold) 
-        return frame_eeg_filted, peaks_in_frame_eeg
+        frame_eeg_filtered = self.filter_data(frame_eeg)
+        peaks_in_frame_eeg = self.peaks_detect(frame_eeg_filtered, self.threshold) 
+        return frame_eeg_filtered, peaks_in_frame_eeg
           
     def process_data(self,frame_eeg):
         start = time.time()
@@ -127,7 +133,7 @@ class RealTimeBlinkEeg(object):
             results_df =  results_df.drop(results_df.index[0:self.pad_size*self.num_of_sample_session])
             #print(results_df.shape)   
             self.classify_blink(results_df)
-            self.write_csv(results_df, 'filted_eeg.csv')
+            #self.write_csv(results_df, 'filted_eeg.csv')
 
         end = time.time()
         runtime = end - start
@@ -136,7 +142,10 @@ class RealTimeBlinkEeg(object):
     def init_pad(self,pad_size):
         frame_eeg = self.collect_data()        
         for _ in range(pad_size):
-            frame_eeg = frame_eeg.append(self.collect_data(), ignore_index = True)
+            frame_eeg = frame_eeg.append(self.collect_data(), ignore_index = True) #enqueue
+            EEG_F7, EEG_F8 = get_single_data()
+            self.EEG_F7.enqueue(EEG_F7)
+            self.EEG_F8.enqueue(EEG_F8)
         return frame_eeg  
 
     def main_process(self):

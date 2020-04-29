@@ -1,5 +1,3 @@
-
-#------------------------------------------------
 # Importing the packages and the libraries
 from BluetoothControl import *
 from Credentials import *
