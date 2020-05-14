@@ -26,7 +26,9 @@ class Emotiv_API():
         self.headset_id = self.query_headsets()
         self.request_access()
         self.cortex_token = self.authorize()
+        print(self.get_license_info())
         self.session_id = self.create_session()
+        print(self.query_session())
     #------------------------------------------------------------
     def get_cortex_inf(self):
         #Get cortex info
@@ -102,13 +104,15 @@ class Emotiv_API():
             "method": "authorize",
             "params": {
                 "clientId": self.client_id,
-                "clientSecret": self.client_secret
+                "clientSecret": self.client_secret,
+                "debit": 1
             }
         }))
         print("Waiting cortext Token...")   
         result = json.loads(self.EmotivWs.recv())
         CortexToken = result.get("result").get("cortexToken")
         print(colored("successfuly","green"))  
+        print(result)
         return CortexToken 
     #------------------------------------------------------------
     def create_session(self,):
@@ -141,7 +145,28 @@ class Emotiv_API():
     #     }
     # }))
     #------------------------------------------------------------
-
+    def query_session(self):
+        self.EmotivWs.send(json.dumps({
+            "id": 1,
+            "jsonrpc": "2.0",
+            "method": "querySessions",
+            "params": {
+                "cortexToken": self.cortex_token
+            }
+        }))
+        return self.EmotivWs.recv()
+    #------------------------------------------------------------
+    def get_license_info(self):
+        self.EmotivWs.send(json.dumps({
+            "id": 1,
+            "jsonrpc": "2.0",
+            "method": "getLicenseInfo",
+            "params": {
+                "cortexToken": self.cortex_token
+            }
+            }))
+        return self.EmotivWs.recv()
+    #------------------------------------------------------------
     def subscribe(self, streams):
     #Stream data 
     #The parameter streams must contain one or more values, chosen from this list: 
@@ -153,7 +178,7 @@ class Emotiv_API():
             "params": {
                 "cortexToken": self.cortex_token,
                 "session": self.session_id,
-                "streams": streams
+                "streams": ["eeg"]
             }
         }))
         
@@ -163,7 +188,7 @@ class Emotiv_API():
 
 if __name__ == "__main__":
     emotiv = Emotiv_API(client_id, client_secret)
-    emotiv.subscribe(["eeg"])
+    emotiv.subscribe(["mot","eeg"])
     print("1. Running program without BLE")
     print("2. Runing initialize BLE and send data stream to Arduino")
     print ("Select by entering coresponding number...")
