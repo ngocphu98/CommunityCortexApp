@@ -7,17 +7,15 @@ import threading
 import gevent
 import csv
 import sys
-<<<<<<< HEAD
 from Credentials import client_id, client_secret
 from EmotivControl import Emotiv_API
-=======
->>>>>>> 4bedeff55512aa72d6438d5593be4e49b10d39a3
 from RT_Plot import *
+from BluetoothControl import *
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
     
-    def __init__(self, emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path):
+    def __init__(self, emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path):
         self.emotiv = emotiv
         data_file_eeg = pd.read_csv(path)
         self.eeg_data = data_file_eeg[list_channels]
@@ -51,7 +49,7 @@ class RealTimeBlinkEeg(object):
         self._time1 = _time1
         self.right_blink_count = 0
         self.left_blink_count = 0
-        
+        self.command = command
     def get_single_data(self):
         # single_data = self.eeg_data.loc[self.count, list_channels]
         # self.count += 1
@@ -89,12 +87,15 @@ class RealTimeBlinkEeg(object):
         
         if self.left_blink_count == 10 and self.right_blink_count == 0:
             #print("left")
+            command.append('F')
             pass
         elif self.right_blink_count == 10 and self.left_blink_count == 0:
             #print("right")
+            command.append('B')
             pass
         elif self.right_blink_count > 0 and self.right_blink_count > 0:
             #print("left & right")
+            command.append('S')
             pass
 
     def preprocess_signal(self, signal):
@@ -179,11 +180,35 @@ class RealTimeBlinkEeg(object):
             print("Keyboard interrupt exiting program ...")
         finally:
             print("Finally exiting program ...")  
-         
+
+def send_command(command):
+    global old_len
+    new_len = len(command)
+    if new_len != old_len:
+        SendToBluetooth(command[-1])
+        old_len = len(command)
+def init_ble():
+    #BLE initialize
+    List = SearchNearBy()
+    num = 0
+    NameBle = []
+    #print nearby bluetooth device
+    for k, v in List.items():
+        NameBle += [k]
+        num += 1
+        print ("{}:".format(num)," \t:\t ".join((k,v)))
+    print ("Select your device by entering its coresponding number...")
+    SelectionDevice = int(input("> ")) - 1
+    print ("You have selected", NameBle[SelectionDevice])
+    CreatConection(List[NameBle[SelectionDevice]])
+    print("Conected to ",NameBle[SelectionDevice])
+
+
 if __name__ == "__main__":
     emotiv = Emotiv_API(client_id, client_secret)
     emotiv.subscribe(["eeg"])
     emotiv.recv()
+    init_ble()
     F7 = []
     F8 = []
     F7_raw = []
@@ -192,8 +217,11 @@ if __name__ == "__main__":
     _time1 = []
     left_flag = []
     right_flag = []
+    old_len = 0
+    command = []
     path = "D:\\Phu_Le\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
-    real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path)
+    real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
     t = threading.Thread(target = real_time_eeg.main_process)
     t.start()
+    t1 = threading.Thread(target = send_command, args = command)
     main(F7, F8, _time1, left_flag, right_flag)
