@@ -7,12 +7,15 @@ import threading
 import gevent
 import csv
 import sys
-from testpy2 import *
+from Credentials import client_id, client_secret
+from EmotivControl import Emotiv_API
+from RT_Plot import *
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
     
-    def __init__(self, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path):
+    def __init__(self, emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path):
+        self.emotiv = emotiv
         data_file_eeg = pd.read_csv(path)
         self.eeg_data = data_file_eeg[list_channels]
         self.len_sig = self.eeg_data.shape[0]
@@ -23,7 +26,8 @@ class RealTimeBlinkEeg(object):
         #Sample time
         self.Ts = 1/self.Fs
         #Threshold for peak detect
-        self.threshold = 500
+        self.threshold_left = 400
+        self.threshold_right = 1000
         # counter service for get data from file eeg data
         self.count = 0
         # Create a Highpass filter
@@ -46,9 +50,13 @@ class RealTimeBlinkEeg(object):
         self.left_blink_count = 0
         
     def get_single_data(self):
-        single_data = self.eeg_data.loc[self.count, list_channels]
-        self.count += 1
-        return single_data['EEG.F7'], single_data['EEG.F8']
+        # single_data = self.eeg_data.loc[self.count, list_channels]
+        # self.count += 1
+        # return single_data['EEG.F7'], single_data['EEG.F8']
+
+        single_data = self.emotiv.recv()
+        # F7 = 3, F8 = 14
+        return single_data.get('eeg')[3], single_data.get('eeg')[14]
 
     def filter_data(self, _signal):
         signal_pp_filtered = signal.sosfilt(self.hp_filter, _signal)
@@ -59,13 +67,13 @@ class RealTimeBlinkEeg(object):
 
 
     def classify_blink(self, left_channel, right_channel):
-        if left_channel > self.threshold:
+        if left_channel > self.threshold_left:
             self.left_flag.append(1)
             self.left_blink_count += 1
         else: 
             self.left_blink_count = 0
             self.left_flag.append(0)
-        if right_channel > self.threshold:
+        if right_channel > self.threshold_right:
             self.right_blink_count += 1
             self.right_flag.append(1)
         else: 
@@ -170,6 +178,9 @@ class RealTimeBlinkEeg(object):
             print("Finally exiting program ...")  
          
 if __name__ == "__main__":
+    emotiv = Emotiv_API(client_id, client_secret)
+    emotiv.subscribe(["eeg"])
+    emotiv.recv()
     F7 = []
     F8 = []
     F7_raw = []
@@ -178,8 +189,8 @@ if __name__ == "__main__":
     _time1 = []
     left_flag = []
     right_flag = []
-    path = "D:\\NghienCuuKhoaHoc2019\\Programming\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
-    real_time_eeg = RealTimeBlinkEeg(F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path)
+    path = "D:\\Phu_Le\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
+    real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, path)
     t = threading.Thread(target = real_time_eeg.main_process)
     t.start()
     main(F7, F8, _time1, left_flag, right_flag)

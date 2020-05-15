@@ -20,13 +20,18 @@ class MainWindow(QtWidgets.QMainWindow):
         layout2 = QtWidgets.QHBoxLayout()
         main_layout = QtWidgets.QVBoxLayout()
         self.F7_graphWidget = pg.PlotWidget()
+        self.F7_graphWidget.setYRange(-100, 2500)
         self.F8_graphWidget = pg.PlotWidget()
+        self.F8_graphWidget.setYRange(-100, 2500)
         # lf = left_flag
         # rf = right_flag
         self.lf_graphWidget = pg.PlotWidget()
+        self.lf_graphWidget.setYRange(0, 1)
         self.rf_graphWidget = pg.PlotWidget()
+        self.rf_graphWidget.setYRange(0, 1)
 
         layout1.addWidget(self.F7_graphWidget)
+        
         layout1.addWidget(self.F8_graphWidget)
         layout2.addWidget(self.lf_graphWidget)
         layout2.addWidget(self.rf_graphWidget)

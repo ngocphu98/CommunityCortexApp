@@ -7,8 +7,8 @@ import ssl
 import time
 import requests
 from termcolor import colored
-
-class Emotiv_API():
+from datetime import datetime
+class Emotiv_API(object):
 
     def __init__(self, client_id, client_secret):
 
@@ -25,10 +25,23 @@ class Emotiv_API():
         self.get_user_login()
         self.headset_id = self.query_headsets()
         self.request_access()
-        self.cortex_token = self.authorize()
-        print(self.get_license_info())
+        
+        print("Do you want to create a new token: (Y/N)")
+        op = input()
+        if op == 'y' or op == 'Y':
+            self.cortex_token = self.authorize()
+            with open('Token.txt', 'w') as token_file:
+                token_file.write(datetime.today().strftime("%Y:%D:%H:%M:%S.%f"))
+                token_file.write('\n')
+                token_file.write(self.cortex_token)
+                token_file.write('\n')
+        else:
+            with open('Token.txt', 'r') as token_file:
+                token_file.readline()
+                self.cortex_token = token_file.readline()
+
         self.session_id = self.create_session()
-        print(self.query_session())
+
     #------------------------------------------------------------
     def get_cortex_inf(self):
         #Get cortex info
@@ -111,7 +124,7 @@ class Emotiv_API():
         print("Waiting cortext Token...")   
         result = json.loads(self.EmotivWs.recv())
         CortexToken = result.get("result").get("cortexToken")
-        print(colored("successfuly","green"))  
+        print(colored("successfully","green"))  
         print(result)
         return CortexToken 
     #------------------------------------------------------------
@@ -128,7 +141,6 @@ class Emotiv_API():
             }
         }))
         result = json.loads(self.EmotivWs.recv())
-        print(result)
         IdSession = result.get("result").get("id")
         return IdSession
     #------------------------------------------------------------
@@ -178,25 +190,25 @@ class Emotiv_API():
             "params": {
                 "cortexToken": self.cortex_token,
                 "session": self.session_id,
-                "streams": ["eeg"]
+                "streams": streams
             }
         }))
-        
     #------------------------------------------------------------
     def recv(self):
-        return self.EmotivWs.recv()
+        return json.loads(self.EmotivWs.recv())
 
 if __name__ == "__main__":
     emotiv = Emotiv_API(client_id, client_secret)
-    emotiv.subscribe(["mot","eeg"])
+    emotiv.subscribe(["eeg"])
+    emotiv.recv()
     print("1. Running program without BLE")
     print("2. Runing initialize BLE and send data stream to Arduino")
     print ("Select by entering coresponding number...")
     SelectionRun = int(input(">"))
     if (SelectionRun == 1):
         while True:
-            result = json.loads(emotiv.recv())
-            print(result)
+            result = emotiv.recv()
+            print(result.get("eeg")[3])
             # ReturnData = result.get("com")
             # if(ReturnData != None):
             #     MentalCommand = ReturnData[0]
