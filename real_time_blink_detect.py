@@ -7,8 +7,11 @@ import threading
 import gevent
 import csv
 import sys
+<<<<<<< HEAD
 from Credentials import client_id, client_secret
 from EmotivControl import Emotiv_API
+=======
+>>>>>>> 4bedeff55512aa72d6438d5593be4e49b10d39a3
 from RT_Plot import *
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
