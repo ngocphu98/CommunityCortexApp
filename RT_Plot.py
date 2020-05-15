@@ -25,6 +25,11 @@ class MainWindow(QtWidgets.QMainWindow):
         # rf = right_flag
         self.lf_graphWidget = pg.PlotWidget()
         self.rf_graphWidget = pg.PlotWidget()
+        
+        self.F7_graphWidget.setBackground('#222831')
+        self.F8_graphWidget.setBackground('#222831')
+        self.lf_graphWidget.setBackground('#222831')
+        self.rf_graphWidget.setBackground('#222831')
 
         layout1.addWidget(self.F7_graphWidget)
         layout1.addWidget(self.F8_graphWidget)

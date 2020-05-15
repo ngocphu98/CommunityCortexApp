@@ -7,7 +7,7 @@ import threading
 import gevent
 import csv
 import sys
-from testpy2 import *
+from RT_Plot import *
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):

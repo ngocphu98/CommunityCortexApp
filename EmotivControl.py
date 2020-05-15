@@ -26,6 +26,8 @@ class Emotiv_API():
         self.headset_id = self.query_headsets()
         self.request_access()
         self.cortex_token = self.authorize()
+        with open('Token.txt', 'w') as f:
+            f.write(self.cortex_token)
         self.session_id = self.create_session()
     #------------------------------------------------------------
     def get_cortex_inf(self):
@@ -82,6 +84,7 @@ class Emotiv_API():
             }
         }))
         result = json.loads(self.EmotivWs.recv())
+        print(result)
         AccessGranted = result.get("result").get("accessGranted")
         if(AccessGranted == False):
             print(colored("AccesGranted: %s "%str(AccessGranted),"red"))
@@ -111,8 +114,8 @@ class Emotiv_API():
         print(colored("successfuly","green"))  
         return CortexToken 
     #------------------------------------------------------------
-    def create_session(self,):
-        #Creat new session
+    def create_session(self):
+        #Create new session
         self.EmotivWs.send(json.dumps({
             "id": 1,
             "jsonrpc": "2.0",
@@ -120,11 +123,11 @@ class Emotiv_API():
             "params": {
                 "cortexToken": self.cortex_token,
                 "headset": self.headset_id,
-                "status": "active"
+                "status": "open"
             }
         }))
         result = json.loads(self.EmotivWs.recv())
-        print(result)
+        #print(result)
         IdSession = result.get("result").get("id")
         return IdSession
     #------------------------------------------------------------
@@ -178,8 +181,7 @@ if __name__ == "__main__":
             #     ActionPower = ReturnData[1]
             #     Time = result["time"]
             #     print(MentalCommand,ActionPower,Time)
-                
-
+            
     else:
         #BLE initialize
         List = SearchNearBy()
