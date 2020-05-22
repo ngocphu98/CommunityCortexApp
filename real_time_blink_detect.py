@@ -183,10 +183,14 @@ class RealTimeBlinkEeg(object):
 
 def send_command(command):
     global old_len
-    new_len = len(command)
-    if new_len != old_len:
-        SendToBluetooth(command[-1])
-        old_len = len(command)
+    while True:
+        new_len = len(command)
+        if new_len != old_len:
+            SendToBluetooth(command[-1])
+            print("new_len: {}".format(new_len))
+            print("old_len: {}".format(old_len))
+            old_len = len(command)
+
 def init_ble():
     #BLE initialize
     List = SearchNearBy()
@@ -208,7 +212,9 @@ if __name__ == "__main__":
     emotiv = Emotiv_API(client_id, client_secret)
     emotiv.subscribe(["eeg"])
     emotiv.recv()
+    # bluetooth setup:
     init_ble()
+    threads = []
     F7 = []
     F8 = []
     F7_raw = []
@@ -223,5 +229,8 @@ if __name__ == "__main__":
     real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
     t = threading.Thread(target = real_time_eeg.main_process)
     t.start()
-    t1 = threading.Thread(target = send_command, args = command)
+    threads.append(t)
+    t1 = threading.Thread(target = send_command, args = (command,))
+    t1.start()
+    threads.append(t1) 
     main(F7, F8, _time1, left_flag, right_flag)

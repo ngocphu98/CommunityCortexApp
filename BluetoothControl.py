@@ -61,7 +61,7 @@ def waitForArduino():
     while msg.find("Arduino is ready") == -1:
         msg = recvFromArduino(10)
         if (msg[0] != '0'):
-            print (msg)
+            print(msg)
 # ==========================    
 
     
