@@ -66,7 +66,6 @@ class RealTimeBlinkEeg(object):
         signal_filtered = medfilt(signal_pp_filtered,13)
         return signal_filtered
 
-
     def classify_blink(self, left_channel, right_channel):
         if left_channel > self.threshold_left:
             self.left_flag.append(1)
@@ -142,45 +141,34 @@ class RealTimeBlinkEeg(object):
             else:
                 self._time1.append(self._time1[-1] + 1)                   
                 
-
     def main_process(self):
-        print("start program")
         self.init_pad(self.pad_size)
-        try:
-            while True:
-                start = time.time()
-                #add new data point
-                time.sleep(0.001)
-                F7, F8 = self.get_single_data()
-                # self.F7.put(F7, block = False)
-                # self.F8.put(F8, block = False)
-                # self.F7.put_nowait(F7)
-                # self.F8.put_nowait(F8)
-                self.F7_raw.append(F7)
-                self.F8_raw.append(F8)
-                self._time.append(_time[-1] +1)
-                if len(self.F7_raw) >= 1000:
-                    self.F7_raw.pop(0)
-                    self.F8_raw.pop(0)
-                    self._time.pop(0)
-                self._F7.append(F7)
-                self._F8.append(F8)
-                time_step1 = time.time()
-                real_time_eeg.process_data(self._F7.copy(), self._F8.copy())
-                self._F7.pop(0)
-                self._F8.pop(0)
-                #time.sleep(0.001)
-                end = time.time()
-                time_run = end - start
-                #print("Time run Collect data:",time_step1-start)
-                #if time_run > 0.007:
-                #print("Main process runtime:",time_run)
-                #print()
-        except KeyboardInterrupt:
-            print("Keyboard interrupt exiting program ...")
-        finally:
-            print("Finally exiting program ...")  
-
+        while True:
+            #start = time.time()
+            #add new data point
+            #time.sleep(0.001)
+            F7, F8 = self.get_single_data()
+            self.F7_raw.append(F7)
+            self.F8_raw.append(F8)
+            self._time.append(_time[-1] +1)
+            if len(self.F7_raw) >= 1000:
+                self.F7_raw.pop(0)
+                self.F8_raw.pop(0)
+                self._time.pop(0)
+            self._F7.append(F7)
+            self._F8.append(F8)
+            #time_step1 = time.time()
+            real_time_eeg.process_data(self._F7.copy(), self._F8.copy())
+            self._F7.pop(0)
+            self._F8.pop(0)
+            #time.sleep(0.001)
+            #end = time.time()
+            #time_run = end - start
+            #print("Time run Collect data:",time_step1-start)
+            #if time_run > 0.007:
+            #print("Main process runtime:",time_run)
+            #print()
+ 
 def send_command(command):
     global old_len
     while True:
@@ -207,30 +195,35 @@ def init_ble():
     CreatConection(List[NameBle[SelectionDevice]])
     print("Conected to ",NameBle[SelectionDevice])
 
-
 if __name__ == "__main__":
-    emotiv = Emotiv_API(client_id, client_secret)
-    emotiv.subscribe(["eeg"])
-    emotiv.recv()
-    # bluetooth setup:
-    init_ble()
-    threads = []
-    F7 = []
-    F8 = []
-    F7_raw = []
-    F8_raw = []
-    _time = []
-    _time1 = []
-    left_flag = []
-    right_flag = []
-    old_len = 0
-    command = []
-    path = "D:\\Phu_Le\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
-    real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
-    t = threading.Thread(target = real_time_eeg.main_process)
-    t.start()
-    threads.append(t)
-    t1 = threading.Thread(target = send_command, args = (command,))
-    t1.start()
-    threads.append(t1) 
-    main(F7, F8, _time1, left_flag, right_flag)
+    try:
+        emotiv = Emotiv_API(client_id, client_secret)
+        emotiv.subscribe(["eeg"])
+        emotiv.recv()
+        # bluetooth setup:
+        init_ble()
+        threads = []
+        F7 = []
+        F8 = []
+        F7_raw = []
+        F8_raw = []
+        _time = []
+        _time1 = []
+        left_flag = []
+        right_flag = []
+        old_len = 0
+        command = []
+        path = "D:\\Phu_Le\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
+        real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
+        t = threading.Thread(target = real_time_eeg.main_process)
+        t.start()
+        threads.append(t)
+        t1 = threading.Thread(target = send_command, args = (command,))
+        t1.start()
+        threads.append(t1) 
+        main(F7, F8, _time1, left_flag, right_flag)
+    except KeyboardInterrupt:
+        print("Keyboard interrupt exiting program...")
+
+    finally:
+        print("Finally exiting program ...") 
