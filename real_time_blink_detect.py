@@ -28,7 +28,7 @@ class RealTimeBlinkEeg(object):
         self.Ts = 1/self.Fs
         #Threshold for peak detect
         self.threshold_left = 400
-        self.threshold_right = 1000
+        self.threshold_right = 400
         # counter service for get data from file eeg data
         self.count = 0
         # Create a Highpass filter
@@ -84,17 +84,17 @@ class RealTimeBlinkEeg(object):
         if len(self.right_flag) >= 1000:
             self.right_flag.pop(0)
         
-        if self.left_blink_count == 10 and self.right_blink_count == 0:
+        if self.left_blink_count == 5 and self.right_blink_count == 0:
             #print("left")
-            command.append('F')
+            command.append('1')
             pass
-        elif self.right_blink_count == 10 and self.left_blink_count == 0:
+        elif self.right_blink_count == 5 and self.left_blink_count == 0:
             #print("right")
-            command.append('B')
+            command.append('2')
             pass
         elif self.right_blink_count > 0 and self.right_blink_count > 0:
             #print("left & right")
-            command.append('S')
+            # command.append('S')
             pass
 
     def preprocess_signal(self, signal):
@@ -175,9 +175,9 @@ def send_command(command):
         new_len = len(command)
         if new_len != old_len:
             SendToBluetooth(command[-1])
-            print("new_len: {}".format(new_len))
-            print("old_len: {}".format(old_len))
+            print(command[-1])
             old_len = len(command)
+        time.sleep(0.1)
 
 def init_ble():
     #BLE initialize
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         right_flag = []
         old_len = 0
         command = []
-        path = "D:\\Phu_Le\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
+        path = "D:\\Le Ngoc Phu (K16)\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
         real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
         t = threading.Thread(target = real_time_eeg.main_process)
         t.start()
