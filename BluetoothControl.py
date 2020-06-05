@@ -59,6 +59,7 @@ def waitForArduino():
     print ("Waiting for Arduino to reset...")
     msg = ""
     while msg.find("Arduino is ready") == -1:
+        SendToBluetooth("PC is ready")
         msg = recvFromArduino(10)
         if (msg[0] != '0'):
             print(msg)

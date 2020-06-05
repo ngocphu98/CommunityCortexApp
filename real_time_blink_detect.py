@@ -15,11 +15,8 @@ list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
     
-    def __init__(self, emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path):
+    def __init__(self, emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command):
         self.emotiv = emotiv
-        data_file_eeg = pd.read_csv(path)
-        self.eeg_data = data_file_eeg[list_channels]
-        self.len_sig = self.eeg_data.shape[0]
         #padsize for padding signal 
         self.pad_size = 127
         #Sample frequency
@@ -27,8 +24,8 @@ class RealTimeBlinkEeg(object):
         #Sample time
         self.Ts = 1/self.Fs
         #Threshold for peak detect
-        self.threshold_left = 400
-        self.threshold_right = 400
+        self.threshold_left = 800
+        self.threshold_right = 800
         # counter service for get data from file eeg data
         self.count = 0
         # Create a Highpass filter
@@ -60,11 +57,8 @@ class RealTimeBlinkEeg(object):
         self.wait_left = 0
         self.left_check = False
         self.right_check = False
-    def get_single_data(self):
-        # single_data = self.eeg_data.loc[self.count, list_channels]
-        # self.count += 1
-        # return single_data['EEG.F7'], single_data['EEG.F8']
 
+    def get_single_data(self):
         single_data = self.emotiv.recv()
         # F7 = 3, F8 = 14
         #AF3 = 2, AF4 = 13
@@ -113,12 +107,14 @@ class RealTimeBlinkEeg(object):
             if self.left == True and self.left_lock_count == 0 and self.right_lock_count == 0:
                 print('L', self._time1[-1])
                 self.kq.append('L')
+                command.append('4')
                 self.Time.append(self._time1[-1])  
                 self.left_lock_count = 50                
 
             if self.right == True and self.left_lock_count == 0 and self.right_lock_count == 0:
                 print('R', self._time1[-1])
                 self.kq.append('R')
+                self.command.append('3')
                 self.Time.append(self._time1[-1])
                 self.right_lock_count = 50
 
@@ -142,15 +138,16 @@ class RealTimeBlinkEeg(object):
         self.F7_filtered.append(a)
         self.F8_filtered.append(b)
         self._time1.append(self._time1[-1] + self.Ts)
-        if self._time1[-1] >= 127:
-            with open('Result.txt', 'w') as result_file: 
-                for i in self.kq:
-                    result_file.write(str(i))
-                    result_file.write('\n')
-                for i in self.Time:
-                    result_file.write(str(i))
-                    result_file.write('\n') 
-            exit(0)                     
+        #Save data and exit after a specific time
+        # if self._time1[-1] >= 100:
+        #     with open('Result.txt', 'w') as result_file: 
+        #         for i in self.kq:
+        #             result_file.write(str(i))
+        #             result_file.write('\n')
+        #         for i in self.Time:
+        #             result_file.write(str(i))
+        #             result_file.write('\n') 
+        #     exit(0)                     
         if len(self.F7_filtered) >= 1000:
             self.F7_filtered.pop(0)
             self.F8_filtered.pop(0)
@@ -217,7 +214,7 @@ def send_command(command):
             SendToBluetooth(command[-1])
             print(command[-1])
             old_len = len(command)
-        time.sleep(0.1)
+        time.sleep(0.2)
 
 def init_ble():
     #BLE initialize
@@ -239,7 +236,7 @@ if __name__ == "__main__":
     try:
         emotiv = Emotiv_API(client_id, client_secret)
         # bluetooth setup:
-        # init_ble()
+        init_ble()
         threads = []
         F7 = []
         F8 = []
@@ -251,22 +248,22 @@ if __name__ == "__main__":
         right_flag = []
         old_len = 0
         command = []
-        path = "D:\\Le Ngoc Phu (K16)\\Locker\\Emotiv_App\\CommunityCortexApp\\eeg_data\\Data_eeg.csv"
-        real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command, path)
+        real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command)
         t = threading.Thread(target = real_time_eeg.main_process)
         input("nhan phim bat ki de dat dau")
         emotiv.subscribe(["eeg"])
         emotiv.recv()        
         t.start()
         threads.append(t)
-        # t1 = threading.Thread(target = send_command, args = (command,))
-        # t1.start()
-        # threads.append(t1) 
-        # main(F7, F8, _time1, left_flag, right_flag)
-        time.sleep(1)
-        from Record_Makers import *
-        auto_record(_time1)
+        t1 = threading.Thread(target = send_command, args = (command,))
+        t1.start()
+        threads.append(t1)    
+        main(F7, F8, _time1, left_flag, right_flag)
+        # time.sleep(1)
+        # from Record_Makers import *
+        # auto_record(_time1)
     except KeyboardInterrupt:
         print("Keyboard interrupt exiting program...")
     finally:
         print("Finally exiting program ...") 
+

@@ -26,12 +26,12 @@ def auto_record(t):
     time_makers = []
     for _ in range(10):
         time.sleep(3)
-        makers.append('L')
+        makers.append('R')
         time_makers.append(t[-1])   
     time.sleep(11)
     for _ in range(10):
         time.sleep(3)  
-        makers.append('R')
+        makers.append('L')
         time_makers.append(t[-1])   
 
     with open('Makers.txt', 'w') as makers_file: 

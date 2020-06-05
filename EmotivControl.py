@@ -94,7 +94,7 @@ class Emotiv_API(object):
             "params": {
                 "clientId": self.client_id,
                 "clientSecret": self.client_secret
-            }
+            } 
         }))
         result = json.loads(self.EmotivWs.recv())
         AccessGranted = result.get("result").get("accessGranted")
