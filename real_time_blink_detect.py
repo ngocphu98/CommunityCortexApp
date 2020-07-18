@@ -11,6 +11,7 @@ from Credentials import client_id, client_secret
 from EmotivControl import Emotiv_API
 from RT_Plot import *
 from BluetoothControl import *
+import math
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
@@ -57,12 +58,15 @@ class RealTimeBlinkEeg(object):
         self.wait_left = 0
         self.left_check = False
         self.right_check = False
+        # self.AccX = []
+        # self.AccY = []
+        # self.AccZ = []
 
     def get_single_data(self):
         single_data = self.emotiv.recv()
         # F7 = 3, F8 = 14
         #AF3 = 2, AF4 = 13
-        return single_data.get('eeg')[3], single_data.get('eeg')[14]
+        return single_data
 
     def filter_data(self, _signal):
         signal_pp_filtered = signal.sosfilt(self.hp_filter, _signal)
@@ -131,8 +135,8 @@ class RealTimeBlinkEeg(object):
     def process_data(self, EEG_F7, EEG_F8):
         #start = time.time()
 
-        a = self.preprocess_signal(EEG_F7)[127]
-        b = self.preprocess_signal(EEG_F8)[127]
+        a = self.preprocess_signal(EEG_F7)[110]
+        b = self.preprocess_signal(EEG_F8)[110]
 
         self.classify_blink(a, b)
         self.F7_filtered.append(a)
@@ -157,25 +161,30 @@ class RealTimeBlinkEeg(object):
         #runtime = end - start
         #print("Process data runtime:", runtime)
 
-    def init_pad(self,pad_size):     
-        for _ in range(pad_size):
-            F7, F8 = self.get_single_data()
-            self._F7.append(F7)
-            self._F8.append(F8)
-            self.F7_raw.append(F7)
-            self.F8_raw.append(F8)
-            self.left_flag.append(0)
-            self.right_flag.append(0)
-            self.F7_filtered.append(0)
-            self.F8_filtered.append(0)
-            if len(self._time) == 0:
-                self._time.append(0)
-            else:
-                self._time.append(self._time[-1] + 1)
-            if len(self._time1) == 0:
-                self._time1.append(0)
-            else:
-                self._time1.append(self._time1[-1] + self.Ts)                   
+    def init_pad(self,pad_size):    
+        i = 0 
+        while i < pad_size:
+            single_data = self.emotiv.recv()
+            if 'eeg' in single_data:
+                F7 = single_data.get('eeg')[3]
+                F8 = single_data.get('eeg')[14]                
+                self._F7.append(F7)
+                self._F8.append(F8)
+                self.F7_raw.append(F7)
+                self.F8_raw.append(F8)
+                self.left_flag.append(0)
+                self.right_flag.append(0)
+                self.F7_filtered.append(0)
+                self.F8_filtered.append(0)
+                if len(self._time) == 0:
+                    self._time.append(0)
+                else:
+                    self._time.append(self._time[-1] + 1)
+                if len(self._time1) == 0:
+                    self._time1.append(0)
+                else:
+                    self._time1.append(self._time1[-1] + self.Ts)
+                i += 1                   
                 
     def main_process(self):
         self.init_pad(self.pad_size)
@@ -184,20 +193,37 @@ class RealTimeBlinkEeg(object):
             #start = time.time()
             #add new data point
             #time.sleep(0.001)
-            F7, F8 = self.get_single_data()
-            self.F7_raw.append(F7)
-            self.F8_raw.append(F8)
-            self._time.append(_time[-1] +1)
-            if len(self.F7_raw) >= 1000:
-                self.F7_raw.pop(0)
-                self.F8_raw.pop(0)
-                self._time.pop(0)
-            self._F7.append(F7)
-            self._F8.append(F8)
-            #time_step1 = time.time()
-            real_time_eeg.process_data(self._F7.copy(), self._F8.copy())
-            self._F7.pop(0)
-            self._F8.pop(0)
+            single_data = self.emotiv.recv()
+            if 'eeg' in single_data:
+                F7 = single_data.get('eeg')[3]
+                F8 = single_data.get('eeg')[14]
+                self.F7_raw.append(F7)
+                self.F8_raw.append(F8)
+                self._time.append(_time[-1] +1)
+                if len(self.F7_raw) >= 1000:
+                    self.F7_raw.pop(0)
+                    self.F8_raw.pop(0)
+                    self._time.pop(0)
+                self._F7.append(F7)
+                self._F8.append(F8)
+                #time_step1 = time.time()
+                real_time_eeg.process_data(self._F7.copy(), self._F8.copy())
+                self._F7.pop(0)
+                self._F8.pop(0)
+            elif 'mot' in single_data:
+                # self.AccX.append(single_data.get('mot')[5])
+                # self.AccY.append(single_data.get('mot')[6])
+                # self.AccZ.append(single_data.get('mot')[7])
+
+                AccX = single_data.get('mot')[5]
+                AccY = single_data.get('mot')[6]
+                AccZ = single_data.get('mot')[7]               
+                G = math.sqrt(AccX*AccX+AccY*AccY+AccZ*AccZ)
+                if G > 13000:
+                    print(G)
+                    self.right_lock_count = 300
+                    self.left_lock_count = 300
+
             #time.sleep(0.001)
             #end = time.time()
             #time_run = end - start
@@ -212,7 +238,7 @@ def send_command(command):
         new_len = len(command)
         if new_len != old_len:
             SendToBluetooth(command[-1])
-            print(command[-1])
+            # print(command[-1])
             old_len = len(command)
         time.sleep(0.2)
 
@@ -234,9 +260,11 @@ def init_ble():
 
 if __name__ == "__main__":
     try:
+        BLE = 0
         emotiv = Emotiv_API(client_id, client_secret)
-        # bluetooth setup:
-        init_ble()
+        if BLE == 1:
+            # bluetooth setup:
+            init_ble()
         threads = []
         F7 = []
         F8 = []
@@ -250,14 +278,16 @@ if __name__ == "__main__":
         command = []
         real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command)
         t = threading.Thread(target = real_time_eeg.main_process)
-        input("nhan phim bat ki de dat dau")
-        emotiv.subscribe(["eeg"])
-        emotiv.recv()        
+        # input("nhan phim bat ki de dat dau")
+        emotiv.subscribe(["eeg", "mot"])
+        # emotiv.subscribe(["eeg"])
+        print(emotiv.recv())
         t.start()
-        threads.append(t)
-        t1 = threading.Thread(target = send_command, args = (command,))
-        t1.start()
-        threads.append(t1)    
+        if BLE == 1:
+            threads.append(t)
+            t1 = threading.Thread(target = send_command, args = (command,))
+            t1.start()
+            threads.append(t1)    
         main(F7, F8, _time1, left_flag, right_flag)
         # time.sleep(1)
         # from Record_Makers import *
@@ -265,5 +295,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("Keyboard interrupt exiting program...")
     finally:
-        print("Finally exiting program ...") 
-
+        print("Finally exiting program ...")
