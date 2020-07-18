@@ -12,6 +12,7 @@ from EmotivControl import Emotiv_API
 from RT_Plot import *
 from BluetoothControl import *
 import math
+from scipy.signal import find_peaks, savgol_filter
 list_channels=["EEG.AF3", "EEG.F7", "EEG.F8", "EEG.AF4"]
 
 class RealTimeBlinkEeg(object):
@@ -58,6 +59,7 @@ class RealTimeBlinkEeg(object):
         self.wait_left = 0
         self.left_check = False
         self.right_check = False
+        self.c = 0
         # self.AccX = []
         # self.AccY = []
         # self.AccZ = []
@@ -126,21 +128,44 @@ class RealTimeBlinkEeg(object):
             self.right_lock_count -= 1
         if self.left_lock_count > 0: 
             self.left_lock_count -= 1
+    def classify_blink2(self, F7, F8):
+        F7 = np.array(F7)
+        F8 = np.array(F8)
 
+        F7_pos_peak, pro = find_peaks(F7, height = self.threshold_left)
+        F7_neg_peak, _ = find_peaks(-F7, height = 200)
+        F8_pos_peak, _ = find_peaks(F8, height = self.threshold_right)
+        F8_neg_peak, _ = find_peaks(-F8, height = 200)
+        # print(F7_pos_peak)
+        if len(F7_pos_peak) == 1 and len(F7_neg_peak) >= 1:
+            # if F7_neg_peak[0] - F7_pos_peak[0] >= 30:
+            self.kq.append('L')
+            command.append('4')
+            print('F7 Width: ',F7_neg_peak[0] - F7_pos_peak[0])
+        if len(F8_pos_peak) == 1 and len(F8_neg_peak) >= 1:
+            # if F8_neg_peak[0] - F8_pos_peak[0] >= 30:
+            self.kq.append('R')
+            self.command.append('3')            
+            print('F8 Width: ',F8_neg_peak[0] - F8_pos_peak[0])
+        print('----------------')
+        # print(F8_pos_peak)
+             
     def preprocess_signal(self, signal):
         signal_filtered = self.filter_data(signal)
+        # signal_filtered = medfilt(signal_filtered, 31)
+        signal_filtered = savgol_filter(signal_filtered,51, 2)
         #peaks = self.peaks_detect(signal_filtered, self.threshold) 
         return signal_filtered
           
     def process_data(self, EEG_F7, EEG_F8):
         #start = time.time()
-
-        a = self.preprocess_signal(EEG_F7)[110]
-        b = self.preprocess_signal(EEG_F8)[110]
-
-        self.classify_blink(a, b)
-        self.F7_filtered.append(a)
-        self.F8_filtered.append(b)
+        self.c += 1
+        b = self.preprocess_signal(EEG_F8)[self.pad_size]
+        a = self.preprocess_signal(EEG_F7)[self.pad_size]
+        # self.classify_blink(a, b)
+        if self.c == self.pad_size - 20:
+            self.classify_blink2(self.F7_filtered[-1-self.pad_size:-1],self.F8_filtered[-1-self.pad_size:-1])
+            self.c = 0
         self._time1.append(self._time1[-1] + self.Ts)
         #Save data and exit after a specific time
         # if self._time1[-1] >= 100:
@@ -188,6 +213,7 @@ class RealTimeBlinkEeg(object):
                 
     def main_process(self):
         self.init_pad(self.pad_size)
+        c = 0
         print('start at: {}'.format(self._time1[-1]))
         while True:
             #start = time.time()
@@ -210,17 +236,17 @@ class RealTimeBlinkEeg(object):
                 real_time_eeg.process_data(self._F7.copy(), self._F8.copy())
                 self._F7.pop(0)
                 self._F8.pop(0)
+                
             elif 'mot' in single_data:
                 # self.AccX.append(single_data.get('mot')[5])
                 # self.AccY.append(single_data.get('mot')[6])
                 # self.AccZ.append(single_data.get('mot')[7])
-
                 AccX = single_data.get('mot')[5]
                 AccY = single_data.get('mot')[6]
                 AccZ = single_data.get('mot')[7]               
                 G = math.sqrt(AccX*AccX+AccY*AccY+AccZ*AccZ)
-                if G > 13000:
-                    print(G)
+                if G > 12500:
+                    # print(G)
                     self.right_lock_count = 300
                     self.left_lock_count = 300
 
@@ -260,7 +286,7 @@ def init_ble():
 
 if __name__ == "__main__":
     try:
-        BLE = 0
+        BLE = 1
         emotiv = Emotiv_API(client_id, client_secret)
         if BLE == 1:
             # bluetooth setup:
