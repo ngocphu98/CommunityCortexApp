@@ -141,12 +141,12 @@ class RealTimeBlinkEeg(object):
             # if F7_neg_peak[0] - F7_pos_peak[0] >= 30:
             self.kq.append('L')
             command.append('4')
-            print('F7 Width: ',F7_neg_peak[0] - F7_pos_peak[0])
+            print('F7 Left: ',F7_neg_peak[0] - F7_pos_peak[0])
         if len(F8_pos_peak) == 1 and len(F8_neg_peak) >= 1:
             # if F8_neg_peak[0] - F8_pos_peak[0] >= 30:
             self.kq.append('R')
             self.command.append('3')            
-            print('F8 Width: ',F8_neg_peak[0] - F8_pos_peak[0])
+            print('F8 Right: ',F8_neg_peak[0] - F8_pos_peak[0])
         print('----------------')
         # print(F8_pos_peak)
              
@@ -162,6 +162,8 @@ class RealTimeBlinkEeg(object):
         self.c += 1
         b = self.preprocess_signal(EEG_F8)[self.pad_size]
         a = self.preprocess_signal(EEG_F7)[self.pad_size]
+        self.F7_filtered.append(a)
+        self.F8_filtered.append(b)
         # self.classify_blink(a, b)
         if self.c == self.pad_size - 20:
             self.classify_blink2(self.F7_filtered[-1-self.pad_size:-1],self.F8_filtered[-1-self.pad_size:-1])
@@ -286,7 +288,7 @@ def init_ble():
 
 if __name__ == "__main__":
     try:
-        BLE = 1
+        BLE = 0
         emotiv = Emotiv_API(client_id, client_secret)
         if BLE == 1:
             # bluetooth setup:
@@ -314,7 +316,7 @@ if __name__ == "__main__":
             t1 = threading.Thread(target = send_command, args = (command,))
             t1.start()
             threads.append(t1)    
-        main(F7, F8, _time1, left_flag, right_flag)
+        main(F7, F8, _time1, left_flag, right_flag, command)
         # time.sleep(1)
         # from Record_Makers import *
         # auto_record(_time1)
