@@ -14,10 +14,10 @@ def SearchNearBy():
     print ("")
     #Create an array with all the MAC
     #addresses of the detected devices
-    nearby_devices = bluetooth.discover_devices()
+    nearby_devices = bluetooth.discover_devices(lookup_names= True)
     #Run through all the devices found and list their name
-    for i in nearby_devices:
-	    Ble_Dict[bluetooth.lookup_name(i)] = i
+    for addr, name  in nearby_devices:
+	    Ble_Dict[name] = addr
     return Ble_Dict
 # ========================
 def CreatConection(bd_addr):

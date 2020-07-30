@@ -6,7 +6,7 @@ import os
 from random import randint
 import time
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, data_F7, data_F8, index, left_flag, right_flag, command, *args, **kwargs):
+    def __init__(self, data_F7, data_F8, index, left_flag, right_flag, command, angle, alow, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.resize(1200,400)
         self.setWindowTitle("EEG-Blink")
@@ -24,6 +24,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.command = command
         self.robo = 2
         self.stop = -1
+        self.angle = angle
+        self.alow =  alow
         graph_layout = QtWidgets.QVBoxLayout()
         layout1 = QtWidgets.QHBoxLayout()
         layout2 = QtWidgets.QHBoxLayout()
@@ -33,7 +35,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.F7_graphWidget.setTitle("EEG F7", size="12pt")
         self.F7_graphWidget.setLabel('left', 'Amplitude (uV)')
         self.F7_graphWidget.setLabel('bottom', 'Time (s)')
-        self.F7_graphWidget.setYRange(-2000,5000)
+        # self.F7_graphWidget.setYRange(-2000,5000)
         # self.F7_thresholdWidget = QtWidgets.QSlider()
         # self.F7_thresholdWidget.setMinimum(-100)
         # self.F7_thresholdWidget.setMaximum(5000)
@@ -42,7 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.F8_graphWidget.setTitle("EEG F8", size="12pt")
         self.F8_graphWidget.setLabel('left', 'Amplitude (uV)')
         self.F8_graphWidget.setLabel('bottom', 'Time (s)')
-        self.F8_graphWidget.setYRange(-2000, 5000)
+        # self.F8_graphWidget.setYRange(-2000, 5000)
         # self.F8_thresholdWidget = QtWidgets.QSlider()
         # self.F8_thresholdWidget.setMinimum(-100)
         # self.F8_thresholdWidget.setMaximum(5000)
@@ -152,7 +154,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.start()
 
         self.up_btn_timer =  QtCore.QTimer()
-        self.up_btn_timer.setInterval(100)
+        self.up_btn_timer.setInterval(50)
         self.up_btn_timer.timeout.connect(self.send_up)
 
         self.down_btn_timer =  QtCore.QTimer()
@@ -161,13 +163,76 @@ class MainWindow(QtWidgets.QMainWindow):
         
 
     def update_plot_data(self):
-        if len(self.y_F7) == len(self.index) and len(self.y_F8) == len(self.index):
-            self.data_line.setData(self.index, self.y_F7)  # Update the data.   
-            self.data_line2.setData(self.index, self.y_F8)  # Update the data. 
-            # self.data_line3.setData(self.index, self.left_flag)
-            # self.data_line4.setData(self.index, self.right_flag) 
+        if self.alow[0] == 1:
+            if len(self.y_F7) == len(self.index) and len(self.y_F8) == len(self.index):
+                self.data_line.setData(self.index, self.y_F7)  # Update the data.   
+                self.data_line2.setData(self.index, self.y_F8)  # Update the data. 
+                # self.data_line3.setData(self.index, self.left_flag)
+                # self.data_line4.setData(self.index, self.right_flag) 
         # print(len(self.index))
-        # print(len(self.y_F7),len(self.y_F8),len(self.left_flag), len(self.right_flag))       
+        # print(len(self.y_F7),len(self.y_F8),len(self.left_flag), len(self.right_flag))  
+        if len(self.angle) > 0:
+            c = self.angle.pop(0)
+            if c == 0:
+                self.up_btn_timer.setInterval(280)
+                self.up_btn_timer.start()
+                self.up_btn.setStyleSheet("QPushButton"
+                                        "{"
+                                        "background-color : red;"
+                                        "font: bold 13px;"
+                                        "padding: 6px;" 
+                                        "border-radius: 10px;"
+                                        "}"
+                                        "QPushButton::pressed"
+                                        "{"
+                                        "background-color : red;"
+                                        "}"
+                                        ) 
+            if c == 1:
+                self.up_btn_timer.stop()  
+                self.up_btn.setStyleSheet("QPushButton"
+                                        "{"
+                                        "background-color : #3ca59d;"
+                                        "font: bold 13px;"
+                                        "padding: 6px;" 
+                                        "border-radius: 10px;"
+                                        "}"
+                                        "QPushButton::pressed"
+                                        "{"
+                                        "background-color : red;"
+                                        "}"
+                                        )                   
+            if c == 2:
+                self.down_btn_timer.setInterval(280)
+                self.down_btn_timer.start()
+                self.down_btn.setStyleSheet("QPushButton"
+                                        "{"
+                                        "background-color : red;"
+                                        "font: bold 13px;"
+                                        "padding: 6px;" 
+                                        "border-radius: 10px;"
+                                        "}"
+                                        "QPushButton::pressed"
+                                        "{"
+                                        "background-color : red;"
+                                        "}"
+                                        )                
+            if c == 3:
+                self.down_btn_timer.stop()  
+                self.down_btn.setStyleSheet("QPushButton"
+                                        "{"
+                                        "background-color : #3ca59d;"
+                                        "font: bold 13px;"
+                                        "padding: 6px;" 
+                                        "border-radius: 10px;"
+                                        "}"
+                                        "QPushButton::pressed"
+                                        "{"
+                                        "background-color : red;"
+                                        "}"
+                                        )                                                  
+
+
     def F7_value_change(self):
         F7_threshold = self.F7_thresholdWidget.value()
         print(F7_threshold)
@@ -178,7 +243,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def stop_clicked(self):
         self.stop = ~self.stop
         if self.stop == 0:
-            self.timer.stop()
+            # self.timer.stop()
+            self.alow[0] = 0
             self.stop_btn.setStyleSheet("QPushButton"
                                     "{"
                                     "background-color : red;"
@@ -192,7 +258,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                     "}"
                                     ) 
         else:
-            self.timer.start()
+            # self.timer.start()
+            self.alow[0] = 1
             self.stop_btn.setStyleSheet("QPushButton"
                                     "{"
                                     "background-color : #3ca59d;"
@@ -207,6 +274,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                     )            
 
     def up_btn_pressed(self):
+        self.up_btn_timer.setInterval(100)
         self.up_btn_timer.start()
 
     def up_btn_released(self):
@@ -231,7 +299,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # command.append('4')
 
     def send_up(self):
-        self.command.append('6')
+        # self.command.append('6')
         if self.robo <= 49:
             self.robo += 1
             pixmap = QtGui.QPixmap(os.getcwd()+"//images//robo//robo (" + str(self.robo) +").png")
@@ -239,22 +307,23 @@ class MainWindow(QtWidgets.QMainWindow):
             self.label.setPixmap(pixmap)
 
     def down_btn_pressed(self):
+        self.down_btn_timer.setInterval(100)
         self.down_btn_timer.start()
 
     def down_btn_released(self):
         self.down_btn_timer.stop()
 
     def send_down(self):
-        self.command.append('5')
+        # self.command.append('5')
         if self.robo >2:
             self.robo -= 1
             pixmap = QtGui.QPixmap(os.getcwd()+"//images//robo//robo (" + str(self.robo) +").png")
             pixmap = pixmap.scaled(430, 540, QtCore.Qt.KeepAspectRatio)
             self.label.setPixmap(pixmap)        
 
-def main(data_F7, data_F8, index, left_flag, right_flag, command):
+def main(data_F7, data_F8, index, left_flag, right_flag, command, angle, alow):
     app = QtWidgets.QApplication(sys.argv)
-    w = MainWindow(data_F7, data_F8, index, left_flag, right_flag, command)
+    w = MainWindow(data_F7, data_F8, index, left_flag, right_flag, command, angle, alow)
     w.show()
     sys.exit(app.exec_())
 

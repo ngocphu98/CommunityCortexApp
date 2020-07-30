@@ -60,6 +60,7 @@ class RealTimeBlinkEeg(object):
         self.left_check = False
         self.right_check = False
         self.c = 0
+        self.angle = angle
         # self.AccX = []
         # self.AccY = []
         # self.AccZ = []
@@ -115,13 +116,15 @@ class RealTimeBlinkEeg(object):
                 self.kq.append('L')
                 command.append('4')
                 self.Time.append(self._time1[-1])  
-                self.left_lock_count = 50                
+                self.left_lock_count = 50    
+                self.right_lock_count = 100            
 
             if self.right == True and self.left_lock_count == 0 and self.right_lock_count == 0:
                 print('R', self._time1[-1])
                 self.kq.append('R')
                 self.command.append('3')
                 self.Time.append(self._time1[-1])
+                self.left_lock_count = 100 
                 self.right_lock_count = 50
 
         if self.right_lock_count > 0: 
@@ -141,6 +144,7 @@ class RealTimeBlinkEeg(object):
             # if F7_neg_peak[0] - F7_pos_peak[0] >= 30:
             self.kq.append('L')
             command.append('4')
+            # left_blink_rate += 1
             print('F7 Left: ',F7_neg_peak[0] - F7_pos_peak[0])
         if len(F8_pos_peak) == 1 and len(F8_neg_peak) >= 1:
             # if F8_neg_peak[0] - F8_pos_peak[0] >= 30:
@@ -164,10 +168,10 @@ class RealTimeBlinkEeg(object):
         a = self.preprocess_signal(EEG_F7)[self.pad_size]
         self.F7_filtered.append(a)
         self.F8_filtered.append(b)
-        # self.classify_blink(a, b)
-        if self.c == self.pad_size - 20:
-            self.classify_blink2(self.F7_filtered[-1-self.pad_size:-1],self.F8_filtered[-1-self.pad_size:-1])
-            self.c = 0
+        self.classify_blink(a, b)
+        # if self.c == self.pad_size - 20:
+        #     self.classify_blink2(self.F7_filtered[-1-self.pad_size:-1],self.F8_filtered[-1-self.pad_size:-1])
+        #     self.c = 0
         self._time1.append(self._time1[-1] + self.Ts)
         #Save data and exit after a specific time
         # if self._time1[-1] >= 100:
@@ -260,15 +264,39 @@ class RealTimeBlinkEeg(object):
             #print("Main process runtime:",time_run)
             #print()
  
-def send_command(command):
-    global old_len
+def send_command(command, angle, alow):
+    global old_len, t_count
     while True:
-        new_len = len(command)
-        if new_len != old_len:
-            SendToBluetooth(command[-1])
-            # print(command[-1])
+        if alow[0] == 1:
+            new_len = len(command)
+            if new_len != old_len:
+                c = command[-1]
+                SendToBluetooth(c)
+                # print(command[-1])
+                old_len = len(command)
+                if c == '3':
+                    t_count.append([0, 28])
+                if c == '4':
+                    t_count.append([1, 28])
+        else:
             old_len = len(command)
-        time.sleep(0.2)
+        if len(t_count) > 0:
+            if t_count[0][0] == 0:
+                angle.append(0)
+                angle.append(3)            
+                t_count[0][0] = 3
+            elif t_count[0][0] == 1:
+                angle.append(2)
+                angle.append(1)            
+                t_count[0][0] = 3
+
+            if t_count[0][1] > 0:
+                t_count[0][1] -=1
+            else:
+                angle.append(1)
+                angle.append(3) 
+                t_count.pop(0)              
+        time.sleep(0.1)
 
 def init_ble():
     #BLE initialize
@@ -283,12 +311,27 @@ def init_ble():
     print ("Select your device by entering its coresponding number...")
     SelectionDevice = int(input("> ")) - 1
     print ("You have selected", NameBle[SelectionDevice])
+    print(List[NameBle[SelectionDevice]])
     CreatConection(List[NameBle[SelectionDevice]])
     print("Conected to ",NameBle[SelectionDevice])
 
+def Auto_send_command(left_blink_rate, right_blink_rate):
+    if len(left_blink_rate) >= 4 and len(right_blink_rate) < len(left_blink_rate):
+        SendToBluetooth("4")
+    if len(right_blink_rate) >= 4 and len(right_blink_rate) > len(left_blink_rate):
+        SendToBluetooth("5")
+    time.sleep(1)
+
+def decrease_blink_rate(left_blink_rate, right_blink_rate):
+    if len(left_blink_rate) >= 0:
+        left_blink_rate.pop(0)
+    if len(right_blink_rate) >= 0:
+        right_blink_rate.pop(0)  
+    time.sleep(0.6)  
+
 if __name__ == "__main__":
     try:
-        BLE = 0
+        BLE = 1
         emotiv = Emotiv_API(client_id, client_secret)
         if BLE == 1:
             # bluetooth setup:
@@ -303,7 +346,12 @@ if __name__ == "__main__":
         left_flag = []
         right_flag = []
         old_len = 0
+        t_count = [[3,0]]
         command = []
+        left_blink_rate = []
+        right_blink_rate = []
+        angle = []
+        alow = [1]
         real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command)
         t = threading.Thread(target = real_time_eeg.main_process)
         # input("nhan phim bat ki de dat dau")
@@ -313,10 +361,12 @@ if __name__ == "__main__":
         t.start()
         if BLE == 1:
             threads.append(t)
-            t1 = threading.Thread(target = send_command, args = (command,))
+            t1 = threading.Thread(target = send_command, args = (command, angle, alow))
             t1.start()
             threads.append(t1)    
-        main(F7, F8, _time1, left_flag, right_flag, command)
+        # threading.Thread(target = decrease_blink_rate, args = [left_blink_rate, right_blink_rate])
+        # threading.Thread(target = Auto_send_command, args = (left_blink_rate, right_blink_rate))
+        main(F7, F8, _time1, left_flag, right_flag, command, angle, alow)
         # time.sleep(1)
         # from Record_Makers import *
         # auto_record(_time1)
