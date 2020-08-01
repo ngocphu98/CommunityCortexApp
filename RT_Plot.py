@@ -274,10 +274,12 @@ class MainWindow(QtWidgets.QMainWindow):
                                     )            
 
     def up_btn_pressed(self):
+        self.button_clicked = 1
         self.up_btn_timer.setInterval(100)
         self.up_btn_timer.start()
 
     def up_btn_released(self):
+        self.button_clicked = 0
         self.up_btn_timer.stop()
 
     def up_btn_clicked(self):
@@ -299,7 +301,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # command.append('4')
 
     def send_up(self):
-        # self.command.append('6')
+        if self.button_clicked == 1:
+            self.command.append('6')
         if self.robo <= 49:
             self.robo += 1
             pixmap = QtGui.QPixmap(os.getcwd()+"//images//robo//robo (" + str(self.robo) +").png")
@@ -307,14 +310,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self.label.setPixmap(pixmap)
 
     def down_btn_pressed(self):
+        self.button_clicked = 1
         self.down_btn_timer.setInterval(100)
         self.down_btn_timer.start()
 
     def down_btn_released(self):
+        self.button_clicked = 0
         self.down_btn_timer.stop()
+        
 
     def send_down(self):
-        # self.command.append('5')
+        if self.button_clicked == 1:      
+            self.command.append('5')
+            
         if self.robo >2:
             self.robo -= 1
             pixmap = QtGui.QPixmap(os.getcwd()+"//images//robo//robo (" + str(self.robo) +").png")

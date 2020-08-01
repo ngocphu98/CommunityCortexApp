@@ -265,7 +265,7 @@ class RealTimeBlinkEeg(object):
             #print()
  
 def send_command(command, angle, alow):
-    global old_len, t_count
+    global old_len, t_count, limit_angle
     while True:
         if alow[0] == 1:
             new_len = len(command)
@@ -274,9 +274,11 @@ def send_command(command, angle, alow):
                 SendToBluetooth(c)
                 # print(command[-1])
                 old_len = len(command)
-                if c == '3':
+                if c == '3' and limit_angle < 5:
+                    limit_angle += 1
                     t_count.append([0, 28])
-                if c == '4':
+                if c == '4' and limit_angle > 1:
+                    limit_angle -= 1
                     t_count.append([1, 28])
         else:
             old_len = len(command)
@@ -352,6 +354,7 @@ if __name__ == "__main__":
         right_blink_rate = []
         angle = []
         alow = [1]
+        limit_angle = 0
         real_time_eeg = RealTimeBlinkEeg(emotiv, F7_raw, F8_raw, F7, F8, _time, _time1, left_flag, right_flag, command)
         t = threading.Thread(target = real_time_eeg.main_process)
         # input("nhan phim bat ki de dat dau")
